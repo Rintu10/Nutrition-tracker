@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111">
+<link rel="manifest" href="./manifest.json">
+<title>Nutrition</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--text:#111;--muted:#777;--line:#e7e7eb;--soft:#f0f0f3;--danger:#c62828}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial,sans-serif}
+button,input,select{font:inherit}
+.app{max-width:680px;margin:auto;padding:18px 16px 96px}
+.top{display:flex;justify-content:space-between;align-items:center;margin:3px 0 16px}
+.title{font-size:31px;font-weight:800;letter-spacing:-1px}.sub{font-size:13px;color:var(--muted);margin-top:3px}
+.card{background:#fff;border-radius:22px;padding:18px;margin:12px 0;box-shadow:0 4px 20px #00000009}
+.hero{background:linear-gradient(145deg,#151515,#3a3a3a);color:#fff}.hero .sub{color:#c8c8c8}
+.big{font-size:38px;font-weight:800;margin-top:3px}.big small{font-size:16px;color:#bbb}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{padding:15px;background:var(--soft);border-radius:17px}.stat b{font-size:20px}.stat span{display:block;color:#777;font-size:12px;margin-top:3px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.metric{margin:14px 0}
+.progress{height:9px;background:#e7e7ea;border-radius:99px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;background:#111;border-radius:99px}
+.hero .progress{background:#555}.hero .progress i{background:#fff}
+.primary{width:100%;padding:15px;border:0;border-radius:15px;background:#111;color:#fff;font-weight:750;font-size:16px;cursor:pointer}
+.secondary{border:0;background:var(--soft);color:#111;border-radius:12px;padding:11px 14px;font-weight:700;cursor:pointer}
+.danger{background:#fff0f0;color:var(--danger)}
+.screen{display:none}.screen.active{display:block}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#ffffffed;backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));display:flex;justify-content:space-around;z-index:20}
+.nav button{border:0;background:none;color:#777;font-size:10px;font-weight:700;padding:5px 8px;cursor:pointer}.nav button.active{color:#111}.ni{display:block;font-size:20px;margin-bottom:2px}
+.food{display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--line)}.food:last-child{border-bottom:0}.foodmain{flex:1;min-width:0}.small{font-size:12px;color:#777;margin-top:4px}
+.section-title{font-size:18px;font-weight:800;margin:22px 2px 10px}
+input,select{width:100%;padding:13px;border:1px solid #dcdce2;border-radius:13px;background:#fff;font-size:16px;outline:none}
+label{display:block;color:#666;font-size:12px;font-weight:650;margin:13px 0 6px}
+.notice{font-size:12px;color:#666;background:#f7f7f8;border-radius:14px;padding:12px;line-height:1.45}
+.empty{text-align:center;color:#777;padding:28px 10px}
+.actions{display:flex;gap:10px;margin-top:16px}.actions>*{flex:1}
+dialog{border:0;border-radius:25px;width:min(94%,560px);padding:0;box-shadow:0 25px 80px #0005}dialog::backdrop{background:#0007}.modal{padding:20px;max-height:88vh;overflow:auto}
+.overlay{position:fixed;inset:0;background:var(--bg);z-index:50;overflow:auto;display:none}.overlay.active{display:block}
+.overlay-inner{max-width:680px;margin:auto;padding:24px 16px 30px}.setup-title{font-size:31px;font-weight:800;letter-spacing:-1px;margin-bottom:7px}
+.choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.choice{border:0;border-radius:13px;background:#eeeeF2;padding:14px 8px;font-weight:700;cursor:pointer}.choice.sel{background:#111;color:#fff}
+.stats2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.progress-box{background:var(--soft);padding:15px;border-radius:17px}
+@media(max-width:480px){.title{font-size:28px}.setup-title{font-size:28px}.choice-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<!-- FIRST LAUNCH SETUP -->
+<div id="setup" class="overlay active">
+  <div class="overlay-inner">
+    <div class="setup-title">Your nutrition setup</div>
+    <div class="sub" style="font-size:13px;line-height:1.45;margin-bottom:18px">
+      I’ll estimate your calorie and protein targets from your body details, activity, and the physique you want. You can change them later.
+    </div>
+
+    <div class="card">
+      <label>Name</label>
+      <input id="sName">
+
+      <label>Age</label>
+      <input id="sAge" type="number" inputmode="numeric">
+
+      <label>Sex</label>
+      <div class="choice-grid" id="sexChoices">
+        <button class="choice sel" data-value="male" type="button">Male</button>
+        <button class="choice" data-value="female" type="button">Female</button>
+        <button class="choice" data-value="other" type="button">Other</button>
+      </div>
+
+      <label>Height unit</label>
+      <div class="choice-grid" id="heightUnitChoices" style="grid-template-columns:1fr 1fr">
+        <button class="choice sel" data-value="cm" type="button">Centimetres (cm)</button>
+        <button class="choice" data-value="imperial" type="button">Feet + inches</button>
+      </div>
+
+      <div id="heightCmWrap">
+        <label>Height (cm)</label>
+        <input id="sHeight" type="number" inputmode="decimal" step="0.1">
+      </div>
+
+      <div id="heightImperialWrap" style="display:none">
+        <div class="grid">
+          <div><label>Feet</label><input id="sFeet" type="number" inputmode="numeric" min="1" max="8"></div>
+          <div><label>Inches</label><input id="sInches" type="number" inputmode="decimal" min="0" max="11.9" step="0.1"></div>
+        </div>
+      </div>
+
+      <label>Weight (kg)</label>
+      <input id="sWeight" type="number" inputmode="decimal" step="0.1">
+
+      <label>How active are you?</label>
+      <select id="sActivity">
+        <option value="sedentary">Sedentary — little exercise</option>
+        <option value="light">Light — 1–3 days/week</option>
+        <option value="moderate" selected>Moderate — 3–5 days/week</option>
+        <option value="very_active">Very active — 6–7 days/week</option>
+        <option value="athlete">Athlete / physical job</option>
+      </select>
+
+      <label>What physique do you want?</label>
+      <div class="choice-grid" id="goalChoices">
+        <button class="choice sel" data-value="lean" type="button">Lean / lose fat</button>
+        <button class="choice" data-value="recomp" type="button">Maintain / recomposition</button>
+        <button class="choice" data-value="muscle" type="button">Build muscle</button>
+      </div>
+
+      <label>Desired rate</label>
+      <select id="sRatePreset">
+        <option value="-0.25">Lose 0.25 kg/week</option>
+        <option value="-0.5">Lose 0.5 kg/week</option>
+        <option value="-0.75">Lose 0.75 kg/week</option>
+        <option value="-1">Lose 1.0 kg/week</option>
+        <option value="-1.25">Lose 1.25 kg/week</option>
+        <option value="0">Maintain</option>
+        <option value="0.25">Gain 0.25 kg/week</option>
+        <option value="0.5">Gain 0.5 kg/week</option>
+        <option value="custom">Custom</option>
+      </select>
+
+      <div id="customRateWrap" style="display:none">
+        <label>Custom weekly change (kg/week)</label>
+        <input id="sCustomRate" type="number" inputmode="decimal" step="0.05">
+        <div class="small">Negative = lose weight. Positive = gain weight.</div>
+      </div>
+
+      <div id="setupRecommendation" class="notice" style="margin-top:14px">
+        Enter your details to see your estimated target.
+      </div>
+    </div>
+
+    <button id="saveSetupBtn" class="primary">Save setup</button>
+  </div>
+</div>
+
+<div class="app">
+  <section id="today" class="screen active">
+    <div class="top">
+      <div><div class="title">Nutrition</div><div class="sub" id="hello">Set up your profile</div></div>
+      <button class="secondary" id="profileBtn">Profile</button>
+    </div>
+    <div class="card hero">
+      <div class="sub">Today's calories</div>
+      <div class="big"><span id="cal">0</span> <small>/ <span id="calGoal">—</span> kcal</small></div>
+      <div class="progress"><i id="calProgress"></i></div>
+      <div class="sub" id="remaining" style="margin-top:9px"></div>
+    </div>
+    <div class="grid">
+      <div class="stat"><b id="proteinValue">0 g</b><span>Protein</span></div>
+      <div class="stat"><b id="proteinGoal">—</b><span>Protein goal</span></div>
+      <div class="stat"><b id="carbValue">0 g</b><span>Carbs</span></div>
+      <div class="stat"><b id="fatValue">0 g</b><span>Fat</span></div>
+    </div>
+    <div class="card">
+      <div class="row"><strong>Daily progress</strong><span class="small" id="status">In progress</span></div>
+      <div class="metric">
+        <div class="row"><strong>🥩 Protein</strong><span id="proteinProgressText"></span></div>
+        <div class="progress"><i id="proteinProgress"></i></div>
+      </div>
+      <div class="metric">
+        <div class="row"><strong>🔥 Calories</strong><span id="calProgressText"></span></div>
+        <div class="progress"><i id="calProgress2"></i></div>
+      </div>
+    </div>
+    <button class="primary" id="addFoodBtn">＋ Add food</button>
+    <div class="section-title">Today's food</div>
+    <div class="card" id="todayFoodList"></div>
+  </section>
+
+  <section id="profile" class="screen">
+    <div class="top"><div><div class="title">Profile</div><div class="sub">Your nutrition setup</div></div></div>
+    <div class="card">
+      <label>Name</label><input id="pName">
+      <label>Age</label><input id="pAge" type="number">
+      <label>Sex</label><select id="pSex"><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select>
+      <label>Height unit</label>
+      <div class="choice-grid" id="profileHeightUnit" style="grid-template-columns:1fr 1fr">
+        <button class="choice sel" data-value="cm" type="button">Centimetres (cm)</button>
+        <button class="choice" data-value="imperial" type="button">Feet + inches</button>
+      </div>
+      <div id="profileHeightCm"><label>Height (cm)</label><input id="pHeight" type="number" step="0.1"></div>
+      <div id="profileHeightImperial" style="display:none"><div class="grid"><div><label>Feet</label><input id="pFeet" type="number"></div><div><label>Inches</label><input id="pInches" type="number" step="0.1"></div></div></div>
+      <label>Weight (kg)</label><input id="pWeight" type="number" step="0.1">
+      <label>Activity</label><select id="pActivity"><option value="sedentary">Sedentary</option><option value="light">Light</option><option value="moderate">Moderate</option><option value="very_active">Very active</option><option value="athlete">Athlete / physical job</option></select>
+      <label>Goal</label><select id="pGoal"><option value="lean">Lose fat</option><option value="recomp">Maintain / recomposition</option><option value="muscle">Build muscle</option></select>
+      <label>Desired rate</label>
+      <select id="pRatePreset">
+        <option value="-0.25">Lose 0.25 kg/week</option><option value="-0.5">Lose 0.5 kg/week</option><option value="-0.75">Lose 0.75 kg/week</option><option value="-1">Lose 1.0 kg/week</option><option value="-1.25">Lose 1.25 kg/week</option><option value="0">Maintain</option><option value="0.25">Gain 0.25 kg/week</option><option value="0.5">Gain 0.5 kg/week</option><option value="custom">Custom</option>
+      </select>
+      <div id="profileCustomRateWrap" style="display:none"><label>Custom weekly change (kg/week)</label><input id="pCustomRate" type="number" step="0.05"></div>
+      <button id="saveProfileBtn" class="primary" style="margin-top:16px">Save profile</button>
+    </div>
+    <div class="card" id="calculation"></div>
+  </section>
+
+  <section id="foods" class="screen">
+    <div class="top"><div><div class="title">My Foods</div><div class="sub">Exact packaged-food values</div></div></div>
+    <div class="card">
+      <div class="notice">Copy nutrition values exactly from the package. The app scales them to the amount you actually eat.</div>
+      <label>Food name</label><input id="fName">
+      <label>Serving size (g)</label><input id="fServing" type="number" step="0.1">
+      <div class="grid"><div><label>Calories</label><input id="fCal" type="number"></div><div><label>Protein (g)</label><input id="fPro" type="number" step="0.1"></div><div><label>Carbs (g)</label><input id="fCarb" type="number" step="0.1"></div><div><label>Fat (g)</label><input id="fFat" type="number" step="0.1"></div></div>
+      <label>Fiber (g)</label><input id="fFiber" type="number" step="0.1">
+      <button id="saveFoodBtn" class="primary" style="margin-top:16px">Save food</button>
+    </div>
+    <div class="card" id="savedFoodList"></div>
+  </section>
+
+  <section id="progress" class="screen">
+    <div class="top"><div><div class="title">Progress</div><div class="sub">Weight trend and adaptive TDEE</div></div></div>
+    <div class="card"><div class="stats2"><div class="progress-box"><b id="avgWeight">—</b><div class="small">7-day average</div></div><div class="progress-box"><b id="weightChange">—</b><div class="small">vs previous 7 days</div></div></div></div>
+    <div class="card"><label>Today's weight (kg)</label><input id="weightInput" type="number" step="0.1"><label>Average calories eaten</label><input id="calInput" type="number"><button id="saveWeightBtn" class="primary" style="margin-top:14px">Save progress</button></div>
+    <div class="card"><strong>Adaptive TDEE</strong><div id="adaptiveBox" class="notice" style="margin-top:10px"></div></div>
+    <div class="card"><strong>Recent weigh-ins</strong><div id="weightHistory" style="margin-top:10px"></div></div>
+  </section>
+</div>
+
+<nav class="nav">
+  <button class="active" data-screen="today"><span class="ni">⌂</span>Today</button>
+  <button data-screen="profile"><span class="ni">◯</span>Profile</button>
+  <button data-screen="foods"><span class="ni">🥗</span>My Foods</button>
+  <button data-screen="progress"><span class="ni">↗</span>Progress</button>
+</nav>
+
+<dialog id="foodDialog">
+  <div class="modal">
+    <h2 style="margin:0 0 5px">Add food</h2><div class="small">Enter the amount you actually consumed.</div>
+    <label>Search food</label><input id="foodSearch">
+    <label>Food</label><select id="foodSelect"></select>
+    <label>Amount (g)</label><input id="foodAmount" type="number" step="0.1">
+    <div class="card" style="background:#f7f7f8;box-shadow:none">
+      <div class="row"><span>Calories</span><b id="prevCal">0 kcal</b></div>
+      <div class="row" style="margin-top:8px"><span>Protein</span><b id="prevPro">0 g</b></div>
+      <div class="row" style="margin-top:8px"><span>Carbs</span><b id="prevCarb">0 g</b></div>
+      <div class="row" style="margin-top:8px"><span>Fat</span><b id="prevFat">0 g</b></div>
+    </div>
+    <div class="actions"><button class="secondary" id="cancelFoodBtn">Cancel</button><button class="primary" id="confirmFoodBtn">Add food</button></div>
+  </div>
+</dialog>
+
+<script>
+'use strict';
+
+const STORAGE='nutrition_v12';
+const $=id=>document.getElementById(id);
+const today=()=>new Date().toISOString().slice(0,10);
+
+const BUILTIN_FOODS=[
+{id:'b1',name:'Chicken Breast',serving:100,cal:165,p:31,carb:0,fat:3.6,fiber:0},
+{id:'b2',name:'Egg',serving:100,cal:143,p:12.6,carb:.7,fat:9.5,fiber:0},
+{id:'b3',name:'White Rice (cooked)',serving:100,cal:130,p:2.7,carb:28,fat:.3,fiber:.4},
+{id:'b4',name:'Milk',serving:100,cal:61,p:3.2,carb:4.8,fat:3.2,fiber:0},
+{id:'b5',name:'Roti / Chapati',serving:100,cal:297,p:11.3,carb:55,fat:4,fiber:3.9},
+{id:'b6',name:'Paneer',serving:100,cal:265,p:18.3,carb:3.4,fat:20.8,fiber:0},
+{id:'b7',name:'Curd / Yogurt',serving:100,cal:61,p:3.5,carb:4.7,fat:3.3,fiber:0},
+{id:'b8',name:'Greek Yogurt',serving:100,cal:59,p:10,carb:3.6,fat:.4,fiber:0},
+{id:'b9',name:'Oats',serving:100,cal:389,p:16.9,carb:66,fat:6.9,fiber:10.6},
+{id:'b10',name:'Banana',serving:100,cal:89,p:1.1,carb:22.8,fat:.3,fiber:2.6},
+{id:'b11',name:'Apple',serving:100,cal:52,p:.3,carb:13.8,fat:.2,fiber:2.4},
+{id:'b12',name:'Orange',serving:100,cal:47,p:.9,carb:11.8,fat:.1,fiber:2.4},
+{id:'b13',name:'Potato (boiled)',serving:100,cal:87,p:1.9,carb:20,fat:.1,fiber:1.8},
+{id:'b14',name:'Sweet Potato (boiled)',serving:100,cal:76,p:1.4,carb:17.7,fat:.1,fiber:2.5},
+{id:'b15',name:'Dal / Lentils (cooked)',serving:100,cal:116,p:9,carb:20.1,fat:.4,fiber:7.9},
+{id:'b16',name:'Chickpeas (cooked)',serving:100,cal:164,p:8.9,carb:27.4,fat:2.6,fiber:7.6},
+{id:'b17',name:'Rajma / Kidney Beans (cooked)',serving:100,cal:127,p:8.7,carb:22.8,fat:.5,fiber:6.4},
+{id:'b18',name:'Fish (white, cooked)',serving:100,cal:128,p:26,carb:0,fat:2.7,fiber:0},
+{id:'b19',name:'Salmon (cooked)',serving:100,cal:206,p:22.1,carb:0,fat:12.4,fiber:0},
+{id:'b20',name:'Tuna (canned in water)',serving:100,cal:116,p:25.5,carb:0,fat:.8,fiber:0},
+{id:'b21',name:'Chicken Thigh (cooked)',serving:100,cal:209,p:26,carb:0,fat:10.9,fiber:0},
+{id:'b22',name:'Tofu',serving:100,cal:76,p:8,carb:1.9,fat:4.8,fiber:.3},
+{id:'b23',name:'Broccoli',serving:100,cal:35,p:2.4,carb:7.2,fat:.4,fiber:3.3},
+{id:'b24',name:'Spinach',serving:100,cal:23,p:2.9,carb:3.6,fat:.4,fiber:2.2},
+{id:'b25',name:'Mixed Vegetables',serving:100,cal:65,p:2.5,carb:11.5,fat:.8,fiber:3.5},
+{id:'b26',name:'Almonds',serving:100,cal:579,p:21.2,carb:21.6,fat:49.9,fiber:12.5},
+{id:'b27',name:'Peanuts',serving:100,cal:567,p:25.8,carb:16.1,fat:49.2,fiber:8.5},
+{id:'b28',name:'Peanut Butter',serving:100,cal:588,p:25.1,carb:20,fat:50,fiber:6},
+{id:'b29',name:'Whole Wheat Bread',serving:100,cal:247,p:13,carb:41,fat:4.2,fiber:7},
+{id:'b30',name:'Brown Rice (cooked)',serving:100,cal:123,p:2.7,carb:25.6,fat:1,fiber:1.6},
+{id:'b31',name:'Quinoa (cooked)',serving:100,cal:120,p:4.4,carb:21.3,fat:1.9,fiber:2.8},
+{id:'b32',name:'Whey Protein (generic)',serving:100,cal:400,p:75,carb:10,fat:7,fiber:1},
+{id:'b33',name:'Cottage Cheese',serving:100,cal:98,p:11.1,carb:3.4,fat:4.3,fiber:0},
+{id:'b34',name:'Avocado',serving:100,cal:160,p:2,carb:8.5,fat:14.7,fiber:6.7},
+{id:'b35',name:'Tomato',serving:100,cal:18,p:.9,carb:3.9,fat:.2,fiber:1.2},
+{id:'b36',name:'Cucumber',serving:100,cal:15,p:.7,carb:3.6,fat:.1,fiber:.5},
+{id:'b37',name:'Carrot',serving:100,cal:41,p:.9,carb:9.6,fat:.2,fiber:2.8},
+{id:'b38',name:'Mango',serving:100,cal:60,p:.8,carb:15,fat:.4,fiber:1.6},
+{id:'b39',name:'Pasta (cooked)',serving:100,cal:158,p:5.8,carb:30.9,fat:.9,fiber:1.8},
+{id:'b40',name:'Poha (cooked)',serving:100,cal:130,p:2.6,carb:25,fat:2.1,fiber:2.2},
+{id:'b41',name:'Idli',serving:100,cal:146,p:4.5,carb:28,fat:1,fiber:1.5},
+{id:'b42',name:'Dosa',serving:100,cal:168,p:4,carb:29,fat:3.7,fiber:1.3}
+];
+
+let state=JSON.parse(localStorage.getItem(STORAGE)||'null') || {
+  profile:{name:'',age:0,sex:'male',height:0,heightUnit:'cm',weight:0,activity:'moderate',goal:'lean',rate:-.5},
+  foods:BUILTIN_FOODS.map(f=>({...f})),
+  logs:{},
+  weights:[]
+};
+
+if(!Array.isArray(state.foods))state.foods=[];
+const existing=new Set(state.foods.map(f=>String(f.id)));
+BUILTIN_FOODS.forEach(f=>{if(!existing.has(String(f.id)))state.foods.push({...f});});
+
+function save(){localStorage.setItem(STORAGE,JSON.stringify(state));}
+
+function factor(a){return {sedentary:1.2,light:1.375,moderate:1.55,very_active:1.725,athlete:1.9}[a]||1.55;}
+
+function calculate(p=state.profile){
+  const w=Number(p.weight)||0,h=Number(p.height)||0,age=Number(p.age)||0;
+  let bmr=10*w+6.25*h-5*age-78;
+  if(p.sex==='male')bmr=10*w+6.25*h-5*age+5;
+  if(p.sex==='female')bmr=10*w+6.25*h-5*age-161;
+  const tdee=bmr*factor(p.activity);
+  const target=Math.max(1000,Math.round((tdee+(Number(p.rate)||0)*7700/7)/10)*10);
+  const protein=Math.round(w*(p.goal==='muscle'?2:1.8)/5)*5;
+  const fat=Math.max(40,Math.round(w*.8/5)*5);
+  const carbs=Math.max(0,Math.round((target-protein*4-fat*9)/4/5)*5);
+  return {bmr,tdee,target,protein,fat,carbs};
+}
+
+function totals(date=today()){
+  const z={cal:0,p:0,carb:0,fat:0,fiber:0};
+  (state.logs[date]||[]).forEach(item=>{
+    const f=state.foods.find(x=>String(x.id)===String(item.id));
+    if(!f)return;
+    const q=item.g/f.serving;
+    z.cal+=f.cal*q;z.p+=f.p*q;z.carb+=(f.carb||0)*q;z.fat+=(f.fat||0)*q;z.fiber+=(f.fiber||0)*q;
+  });
+  return z;
+}
+
+function renderToday(){
+  const t=calculate(),z=totals();
+  $('hello').textContent=state.profile.name?`Hi, ${state.profile.name}`:'Set up your profile';
+  $('cal').textContent=Math.round(z.cal);$('calGoal').textContent=Math.round(t.target);
+  $('proteinValue').textContent=Math.round(z.p)+' g';$('proteinGoal').textContent=Math.round(t.protein)+' g';
+  $('carbValue').textContent=Math.round(z.carb)+' g';$('fatValue').textContent=Math.round(z.fat)+' g';
+  $('remaining').textContent=z.cal<=t.target?`${Math.round(t.target-z.cal)} kcal remaining`:`${Math.round(z.cal-t.target)} kcal over`;
+  $('calProgress').style.width=Math.min(100,z.cal/Math.max(1,t.target)*100)+'%';
+  $('proteinProgress').style.width=Math.min(100,z.p/Math.max(1,t.protein)*100)+'%';
+  $('calProgress2').style.width=Math.min(100,z.cal/Math.max(1,t.target)*100)+'%';
+  $('proteinProgressText').textContent=`${Math.round(z.p)} / ${Math.round(t.protein)} g`;
+  $('calProgressText').textContent=`${Math.round(z.cal)} / ${Math.round(t.target)} kcal`;
+  $('status').textContent=z.cal>t.target?'Over calories':(z.p>=t.protein&&z.cal<=t.target?'Goal reached':'In progress');
+
+  const box=$('todayFoodList');box.innerHTML='';
+  const logs=state.logs[today()]||[];
+  if(!logs.length){box.innerHTML='<div class="empty">Nothing logged yet.<br>Tap <b>Add food</b> to start.</div>';return;}
+  logs.forEach((item,i)=>{
+    const f=state.foods.find(x=>String(x.id)===String(item.id));if(!f)return;
+    const row=document.createElement('div');row.className='food';
+    const main=document.createElement('div');main.className='foodmain';
+    const b=document.createElement('b');b.textContent=f.name;
+    const s=document.createElement('div');s.className='small';s.textContent=`${item.g} g · ${Math.round(f.cal*item.g/f.serving)} kcal · ${Math.round(f.p*item.g/f.serving)} g protein`;
+    main.append(b,s);
+    const del=document.createElement('button');del.className='secondary danger';del.textContent='Delete';
+    del.onclick=()=>{state.logs[today()].splice(i,1);save();renderAll();};
+    row.append(main,del);box.append(row);
+  });
+}
+
+function renderFoods(){
+  const box=$('savedFoodList');box.innerHTML='<h3>Saved foods</h3>';
+  state.foods.forEach(f=>{
+    const row=document.createElement('div');row.className='food';
+    const main=document.createElement('div');main.className='foodmain';
+    const b=document.createElement('b');b.textContent=f.name;
+    const s=document.createElement('div');s.className='small';s.textContent=`${f.serving} g · ${f.cal} kcal · P ${f.p} · C ${f.carb||0} · F ${f.fat||0}`;
+    main.append(b,s);row.appendChild(main);
+    if(!String(f.id).startsWith('b')){
+      const del=document.createElement('button');del.className='secondary danger';del.textContent='Delete';
+      del.onclick=()=>{state.foods=state.foods.filter(x=>String(x.id)!==String(f.id));save();renderAll();};
+      row.appendChild(del);
+    }
+    box.append(row);
+  });
+}
+
+function renderProfile(){
+  const p=state.profile,t=calculate(p);
+  $('calculation').innerHTML=`<b>Starting model</b><p class="small">BMR: ${Math.round(t.bmr)} kcal/day</p><p class="small">Initial TDEE: ${Math.round(t.tdee)} kcal/day</p><p class="small">Target: ${Math.round(t.target)} kcal/day</p><p class="small">Protein ${Math.round(t.protein)} g · Carbs ${Math.round(t.carbs)} g · Fat ${Math.round(t.fat)} g</p>`;
+}
+
+function renderProgress(){
+  const ws=[...state.weights].sort((a,b)=>a.date.localeCompare(b.date));
+  const avg=a=>a.length?a.reduce((s,x)=>s+x.weight,0)/a.length:null;
+  const l=avg(ws.slice(-7)),p=avg(ws.slice(-14,-7));
+  $('avgWeight').textContent=l==null?'—':l.toFixed(2)+' kg';
+  $('weightChange').textContent=l!=null&&p!=null?`${l-p>=0?'+':''}${(l-p).toFixed(2)} kg`:'—';
+  const h=$('weightHistory');h.innerHTML='';
+  if(!ws.length)h.innerHTML='<div class="small">No weigh-ins yet.</div>';
+  ws.slice(-14).reverse().forEach(x=>{
+    const row=document.createElement('div');row.className='food';
+    const main=document.createElement('div');main.className='foodmain';
+    const b=document.createElement('b');b.textContent=x.date;
+    const s=document.createElement('div');s.className='small';s.textContent=`${x.weight.toFixed(1)} kg${x.cal?` · ${Math.round(x.cal)} kcal`:''}`;
+    main.append(b,s);row.appendChild(main);h.appendChild(row);
+  });
+  if(ws.length<14){$('adaptiveBox').textContent='Add at least 14 days of weigh-ins before trusting an adaptive TDEE estimate.';return;}
+  if(ws.slice(-7).filter(x=>x.cal!=null).length<3){$('adaptiveBox').textContent='You have enough weight data for a trend, but need calorie data on at least 3 of the last 7 days.';return;}
+  const rows=ws.slice(-7).filter(x=>x.cal!=null),avgCal=rows.reduce((s,x)=>s+x.cal,0)/rows.length,change=l-p,inferred=avgCal+(-change*7700/7);
+  $('adaptiveBox').innerHTML=`Estimated actual TDEE: <b>~${Math.round(inferred)} kcal/day</b><br>7-day average: ${l.toFixed(2)} kg · change: ${change>=0?'+':''}${change.toFixed(2)} kg/week<br>Average logged calories: ${Math.round(avgCal)} kcal/day.`;
+}
+
+function fillProfile(){
+  const p=state.profile;
+  $('pName').value=p.name||'';$('pAge').value=p.age||'';$('pSex').value=p.sex||'male';$('pWeight').value=p.weight||'';$('pActivity').value=p.activity||'moderate';$('pGoal').value=p.goal||'lean';
+  const imp=p.heightUnit==='imperial';
+  document.querySelectorAll('#profileHeightUnit .choice').forEach(x=>x.classList.toggle('sel',x.dataset.value===(imp?'imperial':'cm')));
+  $('profileHeightCm').style.display=imp?'none':'block';$('profileHeightImperial').style.display=imp?'block':'none';
+  if(imp){const total=(p.height||0)/2.54;$('pFeet').value=Math.floor(total/12);$('pInches').value=(total%12).toFixed(1);}else $('pHeight').value=p.height||'';
+  const std=['-0.25','-0.5','-0.75','-1','-1.25','0','0.25','0.5'];
+  if(std.includes(String(p.rate))){$('pRatePreset').value=String(p.rate);$('pCustomRate').value='';}else{$('pRatePreset').value='custom';$('pCustomRate').value=p.rate||'';}
+  $('profileCustomRateWrap').style.display=$('pRatePreset').value==='custom'?'block':'none';
+}
+
+function profileHeight(){
+  if(document.querySelector('#profileHeightUnit .choice.sel')?.dataset.value==='imperial')return (Number($('pFeet').value)||0)*30.48+(Number($('pInches').value)||0)*2.54;
+  return Number($('pHeight').value)||0;
+}
+function profileRate(){const v=$('pRatePreset').value;return v==='custom'?Number($('pCustomRate').value)||0:Number(v);}
+
+function saveProfile(){
+  state.profile={...state.profile,name:$('pName').value.trim(),age:Number($('pAge').value),sex:$('pSex').value,height:profileHeight(),heightUnit:document.querySelector('#profileHeightUnit .choice.sel')?.dataset.value||'cm',weight:Number($('pWeight').value),activity:$('pActivity').value,goal:$('pGoal').value,rate:profileRate()};
+  save();renderAll();
+}
+
+function setupHeight(){
+  if(document.querySelector('#heightUnitChoices .choice.sel')?.dataset.value==='imperial')return (Number($('sFeet').value)||0)*30.48+(Number($('sInches').value)||0)*2.54;
+  return Number($('sHeight').value)||0;
+}
+function setupRate(){const v=$('sRatePreset').value;return v==='custom'?Number($('sCustomRate').value)||0:Number(v);}
+function setupData(){return{name:$('sName').value.trim(),age:Number($('sAge').value),sex:document.querySelector('#sexChoices .choice.sel')?.dataset.value||'male',height:setupHeight(),heightUnit:document.querySelector('#heightUnitChoices .choice.sel')?.dataset.value||'cm',weight:Number($('sWeight').value),activity:$('sActivity').value,goal:document.querySelector('#goalChoices .choice.sel')?.dataset.value||'lean',rate:setupRate()};}
+
+function setupEstimate(){
+  const p=setupData();
+  if(!p.age||!p.height||!p.weight){$('setupRecommendation').textContent='Enter your details to see your estimated target.';return;}
+  const t=calculate(p);
+  const warning=p.rate<=-.75?'<br><br><b>Note:</b> this is a more aggressive rate of loss. It is a user-selected target, not a guarantee.':'';
+  $('setupRecommendation').innerHTML=`Recommended: <b>${Math.round(t.target).toLocaleString()} kcal/day</b> · estimated maintenance <b>${Math.round(t.tdee).toLocaleString()} kcal/day</b>.<br>Starting macros: <b>${Math.round(t.protein)} g protein</b> · <b>${Math.round(t.fat)} g fat</b> · <b>${Math.round(t.carbs)} g carbs</b>.${warning}`;
+}
+function saveSetup(){
+  const p=setupData();
+  if(!p.name||p.age<13||p.height<=0||p.weight<=0){alert('Please complete your name, age, height and weight.');return;}
+  state.profile=p;save();$('setup').classList.remove('active');fillProfile();renderAll();
+}
+
+function renderFoodOptions(){
+  const q=$('foodSearch').value.trim().toLowerCase(),select=$('foodSelect');select.innerHTML='';
+  state.foods.filter(f=>f.name.toLowerCase().includes(q)).forEach(f=>{const o=document.createElement('option');o.value=f.id;o.textContent=`${f.name} — ${f.cal} kcal / ${f.serving} g`;select.appendChild(o);});
+  updatePreview();
+}
+function updatePreview(){
+  const f=state.foods.find(x=>String(x.id)===String($('foodSelect').value)),g=Number($('foodAmount').value)||0,q=f&&f.serving?g/f.serving:0;
+  $('prevCal').textContent=f?`${Math.round(f.cal*q)} kcal`:'0 kcal';$('prevPro').textContent=f?`${(f.p*q).toFixed(1)} g`:'0 g';$('prevCarb').textContent=f?`${((f.carb||0)*q).toFixed(1)} g`:'0 g';$('prevFat').textContent=f?`${((f.fat||0)*q).toFixed(1)} g`:'0 g';
+}
+function openFood(){renderFoodOptions();$('foodSearch').value='';$('foodAmount').value='';renderFoodOptions();$('foodDialog').showModal();}
+function addFood(){
+  const id=$('foodSelect').value,g=Number($('foodAmount').value);
+  if(!id||g<=0){alert('Enter a valid amount.');return;}
+  if(!state.logs[today()])state.logs[today()]=[];
+  state.logs[today()].push({id,g});save();$('foodDialog').close();renderAll();
+}
+function saveFood(){
+  const f={id:'c'+Date.now(),name:$('fName').value.trim(),serving:Number($('fServing').value),cal:Number($('fCal').value),p:Number($('fPro').value)||0,carb:Number($('fCarb').value)||0,fat:Number($('fFat').value)||0,fiber:Number($('fFiber').value)||0};
+  if(!f.name||f.serving<=0||f.cal<0){alert('Enter food name, serving size and calories.');return;}
+  state.foods.push(f);save();renderAll();['fName','fServing','fCal','fPro','fCarb','fFat','fFiber'].forEach(id=>$(id).value='');
+}
+function saveWeight(){
+  const w=Number($('weightInput').value),cal=Number($('calInput').value)||null;
+  if(w<=0){alert('Enter a valid weight.');return;}
+  state.weights=state.weights.filter(x=>x.date!==today());state.weights.push({date:today(),weight:w,cal});state.profile.weight=w;save();renderAll();$('weightInput').value='';$('calInput').value='';
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.screen===id));
+  if(id==='profile')fillProfile();
+}
+
+function renderAll(){renderToday();renderFoods();renderProfile();renderProgress();}
+
+document.querySelectorAll('.nav button').forEach(btn=>btn.addEventListener('click',()=>showScreen(btn.dataset.screen)));
+$('profileBtn').addEventListener('click',()=>showScreen('profile'));
+$('addFoodBtn').addEventListener('click',openFood);
+$('cancelFoodBtn').addEventListener('click',()=>$('foodDialog').close());
+$('confirmFoodBtn').addEventListener('click',addFood);
+$('foodSelect').addEventListener('change',updatePreview);
+$('foodAmount').addEventListener('input',updatePreview);
+$('foodSearch').addEventListener('input',renderFoodOptions);
+$('saveFoodBtn').addEventListener('click',saveFood);
+$('saveWeightBtn').addEventListener('click',saveWeight);
+$('saveProfileBtn').addEventListener('click',saveProfile);
+
+document.querySelectorAll('#sexChoices .choice,#goalChoices .choice,#heightUnitChoices .choice').forEach(btn=>btn.addEventListener('click',()=>{
+  btn.parentElement.querySelectorAll('.choice').forEach(x=>x.classList.remove('sel'));btn.classList.add('sel');
+  if(btn.closest('#heightUnitChoices')){const imp=btn.dataset.value==='imperial';$('heightCmWrap').style.display=imp?'none':'block';$('heightImperialWrap').style.display=imp?'block':'none';}
+  setupEstimate();
+}));
+
+['sAge','sHeight','sFeet','sInches','sWeight','sCustomRate'].forEach(id=>$(id).addEventListener('input',setupEstimate));
+$('sActivity').addEventListener('change',setupEstimate);
+$('sRatePreset').addEventListener('change',()=>{$('customRateWrap').style.display=$('sRatePreset').value==='custom'?'block':'none';setupEstimate();});
+$('saveSetupBtn').addEventListener('click',saveSetup);
+
+document.querySelectorAll('#profileHeightUnit .choice').forEach(btn=>btn.addEventListener('click',()=>{
+  btn.parentElement.querySelectorAll('.choice').forEach(x=>x.classList.remove('sel'));btn.classList.add('sel');
+  const imp=btn.dataset.value==='imperial';$('profileHeightCm').style.display=imp?'none':'block';$('profileHeightImperial').style.display=imp?'block':'none';
+}));
+$('pRatePreset').addEventListener('change',()=>$('profileCustomRateWrap').style.display=$('pRatePreset').value==='custom'?'block':'none');
+
+fillProfile();
+renderAll();
+</script>
+</body>
+</html>
